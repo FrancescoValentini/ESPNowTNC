@@ -1,4 +1,6 @@
-
+#include <esp_now.h>
+#include <WiFi.h>
+#include <Preferences.h>
 /*
 =================================
 CONSTANTS
@@ -16,8 +18,11 @@ CONSTANTS
 #define ESPNOW_DEFTXCH 1
 #define SERIAL_DEFBAUD 9600
 
+#define PREFERENCES_NAMESPACE "ESPNOWTNC"
 #define PREFKEY_WIFICH "espnow-ch"
 #define PREFKEY_BAUDRATE "serial-baud"
+
+#define DEBUG true
 
 /*
 =================================
@@ -85,8 +90,27 @@ byte csmaP_ = CSMA_RADIO_DEFAULT_P;
 long csmaSlotTime_ = CSMA_RADIO_DEFAULT_SLOT_TIME;
 long csmaSlotTimePrev_ = 0;
 
-void setup() {
+// Initializes serial communication with configured baud rate.
+void initSerial() {
+    Preferences prefs;
+    prefs.begin(PREFERENCES_NAMESPACE, true);  // true = read-only mode
+    uint32_t baud = prefs.getUInt(PREFKEY_BAUDRATE, SERIAL_DEFBAUD);
+    prefs.end();
 
+    Serial.begin(baud);
+    
+    #if DEBUG
+        Serial.print("[DEBUG] Initialized serial port, Baudrate: ");
+        Serial.println(baud);
+    #endif
+}
+
+
+void setup() {
+    initSerial(); // Initializes the serial port
+    while(!Serial);
+
+    
 }
 
 void loop() {
