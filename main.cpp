@@ -15,7 +15,7 @@ CONSTANTS
 #define KISS_BUFFER_SIZE 2048
 #define MAX_MESSAGE_SIZE 4096 // Maximum size of receivable data
 
-#define ESPNOW_DEFTXCH 1
+#define ESPNOW_DEFCHAN 1
 #define SERIAL_DEFBAUD 9600
 
 #define PREFERENCES_NAMESPACE "ESPNOWTNC"
@@ -105,12 +105,76 @@ void initSerial() {
     #endif
 }
 
+/**
+ * @brief Retrieves the WiFi channel from persistent storage
+ * 
+ * Reads the stored WiFi channel value from non-volatile storage. If no value is found,
+ * returns the default ESPNOW channel.
+ * 
+ * @return uint8_t The WiFi channel to use for ESPNOW communication
+ */
+uint8_t getWifiChannel() {
+    Preferences prefs;
+    prefs.begin(PREFERENCES_NAMESPACE, true);  // true = read-only mode
+    uint8_t wifiChannel = prefs.getUChar(PREFKEY_WIFICH, ESPNOW_DEFCHAN);
+    prefs.end();
+
+    #if DEBUG
+        Serial.print("[DEBUG] ESPNOW Channel: ");
+        Serial.println(wifiChannel);        
+    #endif
+
+    return wifiChannel;
+}
+
+/**
+ * @brief Initializes ESP-NOW communication
+ * 
+ * Sets up WiFi in station mode, initializes ESP-NOW, registers callbacks,
+ * and adds a broadcast peer for communication.
+ */
+void initESPNow(){
+    WiFi.mode(WIFI_STA); // Set WiFi mode to station (no AP)
+    WiFi.disconnect(); // Disconnect from any previously connected networks
+
+    // Initialize ESP-NOW and check for errors
+    if (esp_now_init() != ESP_OK) {
+        Serial.println("[X] Error initializing ESP-NOW");
+        return;
+    }
+
+    #if DEBUG
+        Serial.println("[DEBUG] ESPNOW READY!");     
+    #endif
+
+    // Register callback functions for sent and received data
+    esp_now_register_send_cb(OnDataSent);
+    esp_now_register_recv_cb(OnDataRecv);
+
+    // Configure peer information for broadcast communication
+    esp_now_peer_info_t peerInfo;
+    memset(&peerInfo, 0, sizeof(peerInfo));  // Zero out the peerInfo structure
+    
+    // Set broadcast address and channel
+    memcpy(peerInfo.peer_addr, broadcastAddress, 6); // Copy broadcast MAC address
+    peerInfo.channel = getWifiChannel();             // Get channel from storage
+    peerInfo.encrypt = false;                        // No encryption
+    
+    // Add the broadcast peer
+    if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+        Serial.println("[X] Failed to add peer");
+        return;
+    }
+
+    #if DEBUG
+        Serial.println("[DEBUG] Added broadcast peer!");     
+    #endif
+}
 
 void setup() {
     initSerial(); // Initializes the serial port
     while(!Serial);
-
-    
+    initESPNow(); // Initializes ESPNow
 }
 
 void loop() {
