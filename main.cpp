@@ -90,6 +90,37 @@ byte csmaP_ = CSMA_RADIO_DEFAULT_P;
 long csmaSlotTime_ = CSMA_RADIO_DEFAULT_SLOT_TIME;
 long csmaSlotTimePrev_ = 0;
 
+// Debug-only function to print data in hexadecimal format
+#if DEBUG
+    void printHex(const uint8_t *data, int len){
+        for (int i = 0; i < len; i++){
+            uint8_t n = data[i];
+            if(n<0x10) Serial.print("0");
+            Serial.print(n,HEX);
+        }
+    }
+#endif
+
+// Callback function for when data is sent via ESP-NOW
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+    #if DEBUG
+        Serial.println("[DEBUG] TX");
+        Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+    #endif
+}
+
+// Callback function for when data is received via ESP-NOW
+void OnDataRecv(const esp_now_recv_info *recvInfo, const uint8_t *incomingData, int len) {
+    #if DEBUG
+        Serial.print("[DEBUG] RX - ");
+        Serial.print(len);
+        Serial.println(" Bytes.");
+        printHex(incomingData, len);
+        Serial.println("");
+    #endif
+}
+
+
 // Initializes serial communication with configured baud rate.
 void initSerial() {
     Preferences prefs;
