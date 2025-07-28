@@ -251,12 +251,11 @@ void loop() {
     long currentTime = millis();
     if (currentTime > csmaSlotTimePrev_ + csmaSlotTime_ && random(0, 255) < csmaP_) {
         if (Serial.available()) {
-            // TODO: implement
-            //onSerialDataAvailable();
+            onSerialDataAvailable();
         }
         csmaSlotTimePrev_ = currentTime;
     }
-    delay(LOOP_SLEEP_MS);
+    delay(MAIN_LOOP_SLEEP_MS);
 }
 
 // Reset the KISS state machine
@@ -265,3 +264,79 @@ void kissResetState(){
     kissState_ = KissState::Void;
 }
 
+// The KISS parser state machine
+// TODO: implement custom commands
+void onSerialDataAvailable() {
+    while (Serial.available()) {
+        int rx = Serial.read();
+        if (rx < 0) break;
+        byte b = (byte) rx;
+
+        switch (kissState_) {
+        case KissState::Void:
+            if (b == KissMarker::Fend) {
+                kissCmd_ = KissCmd::NoCmd;
+                kissState_ = KissState::GetCmd;
+            }
+            break;
+
+        case KissState::GetCmd:
+            if (b != KissMarker::Fend) {
+                if (b == KissCmd::Data) {
+                    kissCmd_ = KissCmd::Data;
+                    kissState_ = KissState::GetData;
+                } else if (b == KissCmd::P) {
+                    kissCmd_ = KissCmd::P;
+                    kissState_ = KissState::GetP;
+                } else if (b == KissCmd::SlotTime) {
+                    kissCmd_ = KissCmd::SlotTime;
+                    kissState_ = KissState::GetSlotTime;
+                } else kissResetState();
+            }
+            break;
+
+        case KissState::GetP:
+            csmaP_ = b;
+            kissState_ = KissState::GetData;
+            break;
+
+        case KissState::GetSlotTime:
+            csmaSlotTime_ = (long) b * 10;
+            kissState_ = KissState::GetData;
+            break;
+
+        case KissState::GetData:
+            if (b == KissMarker::Fesc) {
+                kissState_ = KissState::Escape;
+            } else if (b == KissMarker::Fend) { // TX
+                if (kissCmd_ == KissCmd::Data && kissBufferPosition_ > 0) {
+                    txData();
+                }
+                kissBufferPosition_ = 0;
+                kissResetState();
+            } else if (kissCmd_ == KissCmd::Data) {
+                if (kissBufferPosition_ < KISS_BUFFER_SIZE) {
+                    kissBuffer_[kissBufferPosition_++] = b;
+                } else {
+                    kissBufferPosition_ = 0;
+                    kissResetState();
+                }
+            }
+            break;
+
+        case KissState::Escape:
+            if (b == KissMarker::Tfend) {
+                if (kissBufferPosition_ < KISS_BUFFER_SIZE)
+                    kissBuffer_[kissBufferPosition_++] = KissMarker::Fend;
+            } else if (b == KissMarker::Tfesc) {
+                if (kissBufferPosition_ < KISS_BUFFER_SIZE)
+                    kissBuffer_[kissBufferPosition_++] = KissMarker::Fesc;
+            }
+            kissState_ = KissState::GetData;
+            break;
+
+        default:
+            break;
+        }
+    }
+}
