@@ -120,6 +120,45 @@ void OnDataRecv(const esp_now_recv_info *recvInfo, const uint8_t *incomingData, 
     #endif
 }
 
+// Function to transmit data by fragmenting it into smaller packets
+void txData() {
+    int totalLen = kissBufferPosition_;
+    #if DEBUG
+        Serial.print("[DEBUG] TX: ");
+        Serial.print(totalLen);
+        Serial.print(" Bytes");
+    #endif
+
+    // Calculate number of fragments needed
+    int fragments = (totalLen + BUFFER - 1) / BUFFER;
+
+    for (int i = 0; i < fragments; i++) {
+        // Calculate offset position in the source buffer
+        int offset = i * BUFFER;
+
+        // Determine fragment length (either full BUFFER size or remaining data)
+        int len = min(BUFFER, totalLen - offset);
+
+        packet.totalLen = totalLen;    // Store total original data length
+        packet.fragmentN = i;          // Store current fragment number
+        
+        // Copy data fragment from source buffer to transmission payload
+        memcpy(packet.payload, kissBuffer_ + offset, len);
+
+        // Send the fragment via ESP-NOW
+        esp_now_send(broadcastAddress, (uint8_t *) &packet, sizeof(packet));
+
+        #if DEBUG
+            Serial.print("[DEBUG] TX Fragment n. ");
+            Serial.print(i);
+            Serial.print(" / ");
+            Serial.print(fragments);
+            Serial.println();
+        #endif
+
+        delay(1);
+    }
+}
 
 // Initializes serial communication with configured baud rate.
 void initSerial() {
@@ -225,3 +264,4 @@ void kissResetState(){
     kissCmd_ = KissCmd::NoCmd;
     kissState_ = KissState::Void;
 }
+
