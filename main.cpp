@@ -209,5 +209,19 @@ void setup() {
 }
 
 void loop() {
+    long currentTime = millis();
+    if (currentTime > csmaSlotTimePrev_ + csmaSlotTime_ && random(0, 255) < csmaP_) {
+        if (Serial.available()) {
+            // TODO: implement
+            //onSerialDataAvailable();
+        }
+        csmaSlotTimePrev_ = currentTime;
+    }
+    delay(LOOP_SLEEP_MS);
+}
 
+// Reset the KISS state machine
+void kissResetState(){
+    kissCmd_ = KissCmd::NoCmd;
+    kissState_ = KissState::Void;
 }
