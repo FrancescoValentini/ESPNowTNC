@@ -120,6 +120,34 @@ void OnDataRecv(const esp_now_recv_info *recvInfo, const uint8_t *incomingData, 
     #endif
 }
 
+// Sends data over the serial line encapsulated in KISS frames
+void sendData(const char *buffer, int bufferSize) {
+  Serial.write(KissMarker::Fend);
+  Serial.write(0x00);
+
+  for (int i = 0; i < bufferSize; i++) {
+    escapedWrite(buffer[i]);
+  }
+
+  Serial.write(KissMarker::Fend);
+}
+
+// Escape according to the KISS protocol
+void escapedWrite(uint8_t bufferByte) {
+  switch(bufferByte) {
+    case KissMarker::Fend:
+      Serial.write(KissMarker::Fesc);
+      Serial.write(KissMarker::Tfend);
+      break;
+    case KissMarker::Fesc:
+      Serial.write(KissMarker::Fesc);
+      Serial.write(KissMarker::Tfesc);
+      break;
+    default:
+      Serial.write(bufferByte);
+  }
+}
+
 // Function to transmit data by fragmenting it into smaller packets
 void txData() {
     int totalLen = kissBufferPosition_;
