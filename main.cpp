@@ -118,6 +118,37 @@ void OnDataRecv(const esp_now_recv_info *recvInfo, const uint8_t *incomingData, 
         printHex(incomingData, len);
         Serial.println("");
     #endif
+
+    if (len < sizeof(packet.totalLen) + sizeof(packet.fragmentN)) return;
+
+    uint16_t totalLen;
+    uint16_t fragmentN;
+    memcpy(&totalLen, incomingData, sizeof(uint16_t));
+    memcpy(&fragmentN, incomingData + sizeof(uint16_t), sizeof(uint16_t));
+
+    const char * payload = (const char * )(incomingData + sizeof(uint16_t) * 2);
+    int payloadLen = len - sizeof(uint16_t) * 2;
+
+    // Checks if it's a new message
+    if (fragmentN == 0) {
+        reassemblyExpectedLen = totalLen;
+        reassemblyCurrentLen = 0;
+    }
+
+    if (reassemblyCurrentLen + payloadLen <= MAX_MESSAGE_SIZE) {
+        memcpy(reassemblyBuffer + reassemblyCurrentLen, payload, payloadLen);
+        reassemblyCurrentLen += payloadLen;
+
+        if (reassemblyCurrentLen >= reassemblyExpectedLen) {
+            // Sends data over serial
+            sendData((char * ) reassemblyBuffer, reassemblyExpectedLen);
+            reassemblyExpectedLen = -1;
+            reassemblyCurrentLen = 0;
+        }
+    } else {
+        reassemblyExpectedLen = -1;
+        reassemblyCurrentLen = 0;
+    }    
 }
 
 // Sends data over the serial line encapsulated in KISS frames
