@@ -21,6 +21,8 @@ CONSTANTS
 #define PREFERENCES_NAMESPACE "ESPNOWTNC"
 #define PREFKEY_WIFICH "espnow-ch"
 #define PREFKEY_BAUDRATE "serial-baud"
+#define PACKET_HEADER "ESPTNC"
+#define PACKET_HEADER_LEN 6
 
 #define DEBUG true
 
@@ -57,10 +59,12 @@ enum KissCmd {
 };
 
 // Packet that is sent with ESPNOW
+// Total: 202 bytes - Max: 250 Bytes
 typedef struct struct_message {
-    uint16_t totalLen;      // Total length of the frame kiss
-    uint16_t fragmentN;     // Number of the transmitted fragment
-    char payload[BUFFER];   // Packet payload
+    char header[PACKET_HEADER_LEN]; // Fixed header
+    uint16_t totalLen;              // Total length of the frame kiss
+    uint16_t fragmentN;             // Number of the transmitted fragment
+    char payload[BUFFER];           // Packet payload
 } struct_message;
 
 /*
@@ -73,6 +77,7 @@ GLOBAL VARIABLES
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 struct_message packet;
+
 
 // Variables used to reassemble the complete frame
 uint8_t reassemblyBuffer[MAX_MESSAGE_SIZE];
@@ -119,15 +124,25 @@ void OnDataRecv(const esp_now_recv_info *recvInfo, const uint8_t *incomingData, 
         Serial.println("");
     #endif
 
-    if (len < sizeof(packet.totalLen) + sizeof(packet.fragmentN)) return;
+    // HEADER CHECK
+    const char expectedHeader[] = PACKET_HEADER;
+    if (len < 6) return;
+    if (memcmp(incomingData, expectedHeader, PACKET_HEADER_LEN) != 0) {
+        #if DEBUG
+            Serial.println("[DEBUG] Invalid header.");
+        #endif
+        return;
+    }
+
+    if (len < PACKET_HEADER_LEN + sizeof(packet.totalLen) + sizeof(packet.fragmentN)) return;
 
     uint16_t totalLen;
     uint16_t fragmentN;
-    memcpy(&totalLen, incomingData, sizeof(uint16_t));
-    memcpy(&fragmentN, incomingData + sizeof(uint16_t), sizeof(uint16_t));
+    memcpy(&totalLen, incomingData + PACKET_HEADER_LEN, sizeof(uint16_t));
+    memcpy(&fragmentN, incomingData + PACKET_HEADER_LEN + sizeof(uint16_t), sizeof(uint16_t));
 
-    const char * payload = (const char * )(incomingData + sizeof(uint16_t) * 2);
-    int payloadLen = len - sizeof(uint16_t) * 2;
+    const char *payload = (const char *)(incomingData + PACKET_HEADER_LEN + sizeof(uint16_t) * 2);
+    int payloadLen = len - PACKET_HEADER_LEN - sizeof(uint16_t) * 2;
 
     // Checks if it's a new message
     if (fragmentN == 0) {
@@ -198,6 +213,7 @@ void txData() {
         // Determine fragment length (either full BUFFER size or remaining data)
         int len = min(BUFFER, totalLen - offset);
 
+        memcpy(packet.header, PACKET_HEADER, PACKET_HEADER_LEN);  // Fixed header
         packet.totalLen = totalLen;    // Store total original data length
         packet.fragmentN = i;          // Store current fragment number
         
