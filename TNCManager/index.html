@@ -25,7 +25,7 @@
                 <div class="tab-pane fade show active" id="console" role="tabpanel" aria-labelledby="console-tab">
                     <!-- Input and SEND button -->
                     <div class="input-group mb-3">
-                        <input type="text" class="form-control" placeholder="Enter command..." aria-label="Command input">
+                        <input type="text" id="txtbCommandInput" class="form-control" placeholder="Enter command..." aria-label="Command input">
                         <!-- Mode Selector -->
                         <select class="form-select ms-2" id="mode-select" style="max-width: 120px;">
                             <option value="ascii" selected>ASCII</option>
@@ -38,11 +38,48 @@
                 </div>
                 <!-- TNC Settings Tab -->
                 <div class="tab-pane fade" id="tnc" role="tabpanel" aria-labelledby="tnc-tab">
-                    <p>This is the TNC Settings tab content.</p>
+                    <button class="btn btn-primary">READ</button>
+
+                    <!-- Channel Setting -->
+                    <div class="d-flex align-items-center mb-3">
+                        <label class="me-3" style="width: 100px;">RF Channel:</label>
+                        <select class="form-select form-select-lg me-3" aria-label="ESPNow Channel">
+                            <option selected>ESPNow Channel</option>
+                            <option value="1">1 (2412 MHz)</option>
+                            <option value="2">2 (2417 MHz)</option>
+                            <option value="3">3 (2422 MHz)</option>
+                            <option value="4">4 (2427 MHz)</option>
+                            <option value="5">5 (2432 MHz)</option>
+                            <option value="6">6 (2437 MHz)</option>
+                            <option value="7">7 (2442 MHz)</option>
+                            <option value="8">8 (2447 MHz)</option>
+                            <option value="9">9 (2452 MHz)</option>
+                            <option value="10">10 (2457 MHz)</option>
+                            <option value="11">11 (2462 MHz)</option>
+                            <option value="12">12 (2467 MHz)</option>
+                        </select>
+                        <button class="btn btn-primary">SAVE</button>
+                    </div>
+
+                    <!-- Baudrate Setting -->
+                    <div class="d-flex align-items-center mb-3">
+                        <label class="me-3" style="width: 100px;">Baudrate:</label>
+                        <select class="form-select form-select-lg me-3" aria-label="Serial Baudrate">
+                            <option selected>Serial Baudrate</option>
+                            <option value="0">1200 (120 bytes/sec)</option>
+                            <option value="1">9600 - Default (960 bytes/sec)</option>
+                            <option value="2">38400 (3.8 KiloBytes/sec)</option>
+                            <option value="3">115200 (11.5 KiloBytes/sec)</option>
+                            <option value="4">576000 (57.6 KiloBytes/sec)</option>
+                        </select>
+                        <button class="btn btn-primary">SAVE</button>
+                    </div>
                 </div>
+
             </div>
         </div>
         <!-- Bootstrap Scripts -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js" integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q" crossorigin="anonymous"></script>
+        <script src="js/app.js"></script> 
     </body>
 </html>
